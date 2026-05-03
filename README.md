@@ -344,15 +344,6 @@ Pushing a `v*` tag triggers `.github/workflows/release.yml`, which:
 Every release is explicitly tied to the upstream MEE server version it
 wraps — no need to remember to put it in the tag message.
 
-### Required GitHub repository secrets
-
-| Secret               | Purpose                                                  |
-| -------------------- | -------------------------------------------------------- |
-| `DOCKERHUB_USERNAME` | Docker Hub user that owns the `onmomo` namespace.        |
-| `DOCKERHUB_TOKEN`    | Docker Hub access token with read+write scope.           |
-| `BUNDLE_URL`         | *(optional)* Pin to a specific MEE bundle URL.           |
-| `BUNDLE_SHA256`      | *(optional)* Required if `BUNDLE_URL` points to mutable storage. |
-
 ## Project layout
 
 ```
