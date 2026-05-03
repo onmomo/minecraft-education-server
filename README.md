@@ -1,4 +1,4 @@
-# docker-minecraft-edu
+# docker-minecraft-education-server
 
 A Docker wrapper for the official **Minecraft Education** dedicated server
 (Linux). Persists worlds and configuration to a host volume, lets you tweak
