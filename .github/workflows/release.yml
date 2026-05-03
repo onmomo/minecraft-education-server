@@ -4,6 +4,16 @@ on:
   push:
     tags:
       - "v*"
+  # Manual trigger from the Actions UI. Pick the branch/ref to release
+  # from in the dropdown, then enter the version tag (e.g. v0.2.0).
+  # If the git tag doesn't exist yet, action-gh-release creates it on
+  # the workflow's commit SHA.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (must match v*, e.g. v0.2.0). Created from the selected ref if it doesn't exist yet."
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -13,13 +23,32 @@ jobs:
   github-release:
     runs-on: ubuntu-latest
     outputs:
-      mee_version: ${{ steps.resolve.outputs.mee_version }}
-      bundle_url:  ${{ steps.resolve.outputs.bundle_url }}
+      release_tag:   ${{ steps.tag.outputs.release_tag }}
+      mee_version:   ${{ steps.resolve.outputs.mee_version }}
+      bundle_url:    ${{ steps.resolve.outputs.bundle_url }}
       bundle_sha256: ${{ steps.resolve.outputs.bundle_sha256 }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Resolve release tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+              release_tag="$INPUT_TAG"
+          else
+              release_tag="${GITHUB_REF_NAME}"
+          fi
+          if [[ ! "$release_tag" =~ ^v[0-9] ]]; then
+              echo "::error::Invalid release tag '$release_tag' — must start with 'v' followed by a digit (e.g. v0.2.0)."
+              exit 1
+          fi
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $release_tag"
 
       # Resolve the Minecraft Education dedicated server version that
       # this wrapper release targets. Order of precedence:
@@ -70,10 +99,14 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          # When triggered via workflow_dispatch on a branch, the tag
+          # may not exist yet — action-gh-release creates it pointing
+          # at the workflow's commit SHA.
+          tag_name: ${{ steps.tag.outputs.release_tag }}
           generate_release_notes: true
-          name: ${{ github.ref_name }} (MEE ${{ steps.resolve.outputs.mee_version }})
+          name: ${{ steps.tag.outputs.release_tag }} (MEE ${{ steps.resolve.outputs.mee_version }})
           body: |
-            ## docker-minecraft-edu ${{ github.ref_name }}
+            ## docker-minecraft-edu ${{ steps.tag.outputs.release_tag }}
 
             Wrapper release. Tracks **Minecraft Education dedicated server
             version `${{ steps.resolve.outputs.mee_version }}`**.
@@ -83,7 +116,7 @@ jobs:
             Available on Docker Hub:
 
             ```bash
-            docker pull onmomo/minecraft-education-server:${{ github.ref_name }}
+            docker pull onmomo/minecraft-education-server:${{ steps.tag.outputs.release_tag }}
             docker pull onmomo/minecraft-education-server:mee-${{ steps.resolve.outputs.mee_version }}
             docker pull onmomo/minecraft-education-server:latest
             ```
@@ -102,7 +135,7 @@ jobs:
             docker buildx build --platform linux/amd64 --load \
               --build-arg BUNDLE_URL=${{ steps.resolve.outputs.bundle_url }} \
               --build-arg BUNDLE_SHA256=${{ steps.resolve.outputs.bundle_sha256 }} \
-              -t docker-minecraft-edu:${{ github.ref_name }} .
+              -t docker-minecraft-edu:${{ steps.tag.outputs.release_tag }} .
             ```
 
   # Build & push the image to Docker Hub at
@@ -140,7 +173,7 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ${{ env.IMAGE }}:${{ github.ref_name }}
+            ${{ env.IMAGE }}:${{ needs.github-release.outputs.release_tag }}
             ${{ env.IMAGE }}:mee-${{ needs.github-release.outputs.mee_version }}
             ${{ env.IMAGE }}:latest
           build-args: |
@@ -148,7 +181,7 @@ jobs:
             BUNDLE_SHA256=${{ needs.github-release.outputs.bundle_sha256 }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.version=${{ needs.github-release.outputs.release_tag }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.title=docker-minecraft-edu
             org.opencontainers.image.description=Docker wrapper for the Minecraft Education dedicated server (MEE ${{ needs.github-release.outputs.mee_version }})
