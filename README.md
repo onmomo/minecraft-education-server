@@ -30,9 +30,9 @@ References:
 ### Option A — pull the published image (recommended)
 
 Released images are pushed to Docker Hub at
-[`onmomo/mc-edu`](https://hub.docker.com/r/onmomo/mc-edu) and tagged
-with both the wrapper version (`vX.Y.Z`) and the upstream MEE version
-(`mee-1.21.133.2`):
+[`onmomo/minecraft-education-server`](https://hub.docker.com/r/onmomo/minecraft-education-server)
+and tagged with both the wrapper version (`vX.Y.Z`) and the upstream
+MEE version (`mee-1.21.133.2`):
 
 ```bash
 mkdir -p data
@@ -43,7 +43,7 @@ docker run -d --name minecraft-edu \
   -p 19132:19132/udp \
   -v "$PWD/data:/data" \
   -it \
-  onmomo/mc-edu:latest
+  onmomo/minecraft-education-server:latest
 ```
 
 Or with compose, using the bundled `docker-compose.pull.yml` override
@@ -331,11 +331,11 @@ Pushing a `v*` tag triggers `.github/workflows/release.yml`, which:
    release body records the upstream MEE version, the resolved bundle
    URL, the SHA-256, and pull commands for the published image.
 4. Builds the image and pushes it to
-   [`onmomo/mc-edu`](https://hub.docker.com/r/onmomo/mc-edu) on Docker
-   Hub with three tags:
-   - `onmomo/mc-edu:<wrapper-tag>` — e.g. `v0.1.0`
-   - `onmomo/mc-edu:mee-<upstream>` — e.g. `mee-1.21.133.2`
-   - `onmomo/mc-edu:latest`
+   [`onmomo/minecraft-education-server`](https://hub.docker.com/r/onmomo/minecraft-education-server)
+   on Docker Hub with three tags:
+   - `onmomo/minecraft-education-server:<wrapper-tag>` — e.g. `v0.1.0`
+   - `onmomo/minecraft-education-server:mee-<upstream>` — e.g. `mee-1.21.133.2`
+   - `onmomo/minecraft-education-server:latest`
 
 Every release is explicitly tied to the upstream MEE server version it
 wraps — no need to remember to put it in the tag message.

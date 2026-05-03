@@ -7,6 +7,6 @@
 #   MCEDU_IMAGE_TAG=mee-1.21.133.2
 services:
   mcedu:
-    image: onmomo/mc-edu:${MCEDU_IMAGE_TAG:-latest}
+    image: onmomo/minecraft-education-server:${MCEDU_IMAGE_TAG:-latest}
     build: !reset null
     pull_policy: always
