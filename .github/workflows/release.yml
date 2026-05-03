@@ -19,6 +19,12 @@ permissions:
   contents: write
   packages: write
 
+env:
+  # Opt every JS-based action into Node.js 24 ahead of the June 2026
+  # default switch. See:
+  # https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   github-release:
     runs-on: ubuntu-latest
