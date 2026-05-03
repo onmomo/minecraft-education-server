@@ -173,6 +173,10 @@ docker compose restart
 
 Worlds live under `./data/worlds/<level-name>/`.
 
+> ⚠️ The default `server-public-ip=localhost` only works if client and
+> server run on the same machine. Edit `data/server.properties` — its
+> inline comments explain the LAN / public-IP cases. Restart to apply.
+
 ### Resetting a config file
 
 To get the shipped default of a file back, delete it and restart — the
