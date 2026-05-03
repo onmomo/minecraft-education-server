@@ -110,16 +110,11 @@ jobs:
           # at the workflow's commit SHA.
           tag_name: ${{ steps.tag.outputs.release_tag }}
           generate_release_notes: true
-          name: ${{ steps.tag.outputs.release_tag }} (MEE ${{ steps.resolve.outputs.mee_version }})
+          name: ${{ steps.tag.outputs.release_tag }} — MEE ${{ steps.resolve.outputs.mee_version }}
           body: |
-            ## docker-minecraft-edu ${{ steps.tag.outputs.release_tag }}
+            Wraps **Minecraft Education dedicated server `${{ steps.resolve.outputs.mee_version }}`**.
 
-            Wrapper release. Tracks **Minecraft Education dedicated server
-            version `${{ steps.resolve.outputs.mee_version }}`**.
-
-            ### Published image
-
-            Available on Docker Hub:
+            ## Pull
 
             ```bash
             docker pull onmomo/minecraft-education-server:${{ steps.tag.outputs.release_tag }}
@@ -127,22 +122,29 @@ jobs:
             docker pull onmomo/minecraft-education-server:latest
             ```
 
-            ### Bundle metadata
+            All three tags resolve to the same image digest for this release.
+
+            ## Bundle provenance
 
             | | |
             | --- | --- |
-            | MEE version | `${{ steps.resolve.outputs.mee_version }}` |
-            | Bundle URL  | <${{ steps.resolve.outputs.bundle_url }}> |
-            | SHA-256     | `${{ steps.resolve.outputs.bundle_sha256 }}` |
+            | MEE version  | `${{ steps.resolve.outputs.mee_version }}` |
+            | Bundle URL   | <${{ steps.resolve.outputs.bundle_url }}> |
+            | Bundle SHA-256 | `${{ steps.resolve.outputs.bundle_sha256 }}` |
 
-            ### Reproducible build
+            The same values are baked into the image as `BUNDLE_URL`,
+            `BUNDLE_SHA256` env vars and `/opt/mcedu/.mee_version`.
+
+            ## Reproducible build
 
             ```bash
             docker buildx build --platform linux/amd64 --load \
               --build-arg BUNDLE_URL=${{ steps.resolve.outputs.bundle_url }} \
               --build-arg BUNDLE_SHA256=${{ steps.resolve.outputs.bundle_sha256 }} \
-              -t docker-minecraft-edu:${{ steps.tag.outputs.release_tag }} .
+              -t minecraft-education-server:${{ steps.tag.outputs.release_tag }} .
             ```
+
+            ## Changes
 
   # Build & push the image to Docker Hub at
   # docker.io/onmomo/minecraft-education-server.
@@ -189,5 +191,5 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ needs.github-release.outputs.release_tag }}
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.title=docker-minecraft-edu
+            org.opencontainers.image.title=minecraft-education-server
             org.opencontainers.image.description=Docker wrapper for the Minecraft Education dedicated server (MEE ${{ needs.github-release.outputs.mee_version }})
