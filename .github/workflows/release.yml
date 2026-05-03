@@ -1,0 +1,153 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  github-release:
+    runs-on: ubuntu-latest
+    outputs:
+      mee_version: ${{ steps.resolve.outputs.mee_version }}
+      bundle_url:  ${{ steps.resolve.outputs.bundle_url }}
+      bundle_sha256: ${{ steps.resolve.outputs.bundle_sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Resolve the Minecraft Education dedicated server version that
+      # this wrapper release targets. Order of precedence:
+      #   1. BUNDLE_URL repo secret (pinned)
+      #   2. https://aka.ms/downloadmee-linuxserver (latest)
+      # In both cases we follow the redirect to the versioned CDN URL
+      # and extract the version from the filename, then download once
+      # to compute the sha256 for the release notes.
+      - name: Resolve upstream MEE version
+        id: resolve
+        env:
+          PINNED_URL: ${{ secrets.BUNDLE_URL }}
+        run: |
+          set -euo pipefail
+          src="${PINNED_URL:-https://aka.ms/downloadmee-linuxserver}"
+          resolved="$(curl -sIL -o /dev/null -w '%{url_effective}' "$src")"
+          echo "Resolved BUNDLE_URL: $resolved"
+
+          # Filename pattern: MinecraftEducation_LinuxDS_<version>.zip
+          version="$(basename "$resolved" \
+              | sed -nE 's/^MinecraftEducation_LinuxDS_([0-9.]+)\.zip$/\1/p')"
+          if [[ -z "$version" ]]; then
+              version="unknown"
+              echo "::warning::Could not parse MEE version from $resolved"
+          fi
+
+          # Download once to checksum (small enough — ~70 MB).
+          tmp="$(mktemp)"
+          curl -fsSL -o "$tmp" "$resolved"
+          sha="$(sha256sum "$tmp" | awk '{print $1}')"
+          rm -f "$tmp"
+
+          echo "mee_version=$version"   >> "$GITHUB_OUTPUT"
+          echo "bundle_url=$resolved"   >> "$GITHUB_OUTPUT"
+          echo "bundle_sha256=$sha"     >> "$GITHUB_OUTPUT"
+
+          # Surface in the workflow summary too.
+          {
+              echo "## Upstream MEE server"
+              echo
+              echo "| Field        | Value |"
+              echo "| ------------ | ----- |"
+              echo "| Version      | \`$version\` |"
+              echo "| Bundle URL   | $resolved |"
+              echo "| SHA-256      | \`$sha\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          name: ${{ github.ref_name }} (MEE ${{ steps.resolve.outputs.mee_version }})
+          body: |
+            ## docker-minecraft-edu ${{ github.ref_name }}
+
+            Wrapper release. Tracks **Minecraft Education dedicated server
+            version `${{ steps.resolve.outputs.mee_version }}`**.
+
+            ### Published image
+
+            Available on Docker Hub:
+
+            ```bash
+            docker pull onmomo/mc-edu:${{ github.ref_name }}
+            docker pull onmomo/mc-edu:mee-${{ steps.resolve.outputs.mee_version }}
+            docker pull onmomo/mc-edu:latest
+            ```
+
+            ### Bundle metadata
+
+            | | |
+            | --- | --- |
+            | MEE version | `${{ steps.resolve.outputs.mee_version }}` |
+            | Bundle URL  | <${{ steps.resolve.outputs.bundle_url }}> |
+            | SHA-256     | `${{ steps.resolve.outputs.bundle_sha256 }}` |
+
+            ### Reproducible build
+
+            ```bash
+            docker buildx build --platform linux/amd64 --load \
+              --build-arg BUNDLE_URL=${{ steps.resolve.outputs.bundle_url }} \
+              --build-arg BUNDLE_SHA256=${{ steps.resolve.outputs.bundle_sha256 }} \
+              -t docker-minecraft-edu:${{ github.ref_name }} .
+            ```
+
+  # Build & push the image to Docker Hub at docker.io/onmomo/mc-edu.
+  #
+  # Required repository secrets:
+  #   DOCKERHUB_USERNAME — Docker Hub user (owner of the onmomo namespace)
+  #   DOCKERHUB_TOKEN    — Docker Hub access token with read+write scope
+  #
+  # Tags pushed:
+  #   onmomo/mc-edu:<wrapper-tag>     e.g. v0.1.0
+  #   onmomo/mc-edu:mee-<upstream>    e.g. mee-1.21.133.2
+  #   onmomo/mc-edu:latest
+  docker-image:
+    runs-on: ubuntu-latest
+    needs: github-release
+    env:
+      IMAGE: docker.io/onmomo/mc-edu
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.ref_name }}
+            ${{ env.IMAGE }}:mee-${{ needs.github-release.outputs.mee_version }}
+            ${{ env.IMAGE }}:latest
+          build-args: |
+            BUNDLE_URL=${{ needs.github-release.outputs.bundle_url }}
+            BUNDLE_SHA256=${{ needs.github-release.outputs.bundle_sha256 }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=docker-minecraft-edu
+            org.opencontainers.image.description=Docker wrapper for the Minecraft Education dedicated server (MEE ${{ needs.github-release.outputs.mee_version }})

@@ -1,0 +1,36 @@
+# Minecraft Education dedicated server bundles — proprietary, do NOT commit.
+# The Dockerfile fetches them via BUNDLE_URL at build time; you should
+# never need them in the repo, but defensively exclude them in case
+# someone extracts a zip here.
+MinecraftEducation_LinuxDS*/
+MinecraftEducation_Server_Linux*/
+*.zip
+
+# Local secrets / config
+.env
+.env.*
+!.env.example
+.bundle_auth
+compose.override.yml
+docker-compose.override.yml
+
+# Runtime data (worlds, logs, edited config) created by docker compose.
+data/
+
+# Belt-and-braces: even if someone places these outside ./data/, never
+# commit credential or session material.
+edu_server_session.json
+*.pem
+*.key
+
+# macOS / editor cruft
+.DS_Store
+.idea/
+.vscode/
+.claude/
+
+# Python virtualenv from the sample tooling notebook
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

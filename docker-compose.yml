@@ -1,0 +1,32 @@
+services:
+  mcedu:
+    # The bedrock_server_edu binary is x86_64-only — there is no arm64
+    # build from Microsoft. Pin the platform so this image works
+    # everywhere (native on x86_64 Linux, Rosetta-emulated on Apple
+    # Silicon, qemu on arm64 Linux).
+    platform: linux/amd64
+    build:
+      context: .
+      platforms:
+        - linux/amd64
+      args:
+        # Defaults to https://aka.ms/downloadmee-linuxserver in the
+        # Dockerfile. Override here (or in .env) to pin a specific
+        # version for reproducible builds.
+        BUNDLE_URL: ${BUNDLE_URL:-https://aka.ms/downloadmee-linuxserver}
+        BUNDLE_SHA256: ${BUNDLE_SHA256:-}
+    image: docker-minecraft-edu:${IMAGE_TAG:-local}
+    container_name: minecraft-edu
+    restart: unless-stopped
+    # stdin_open + tty let you `docker attach minecraft-edu` to run server
+    # console commands (say, op, stop, ...). Detach with Ctrl-P Ctrl-Q.
+    stdin_open: true
+    tty: true
+    ports:
+      # Match server-port in data/server.properties.
+      - "${MCEDU_PORT:-20202}:20202/udp"
+      # LAN visibility — only needed if you want clients on the same LAN
+      # to discover the server via the Friends tab. Comment out otherwise.
+      - "${MCEDU_LAN_PORT:-19132}:19132/udp"
+    volumes:
+      - ./data:/data

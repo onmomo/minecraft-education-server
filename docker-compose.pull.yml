@@ -1,0 +1,12 @@
+# Compose override that pulls the published image from Docker Hub
+# instead of building locally. Use with:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.pull.yml up -d
+#
+# Pin to a specific upstream MEE version with MCEDU_IMAGE_TAG, e.g.:
+#   MCEDU_IMAGE_TAG=mee-1.21.133.2
+services:
+  mcedu:
+    image: onmomo/mc-edu:${MCEDU_IMAGE_TAG:-latest}
+    build: !reset null
+    pull_policy: always

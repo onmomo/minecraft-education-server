@@ -1,0 +1,16 @@
+# Keep the build context tiny — the dedicated server bundle is fetched
+# inside the build via BUNDLE_URL, not copied from the build context.
+.git
+.github
+.venv
+.idea
+.vscode
+.DS_Store
+**/.DS_Store
+data/
+MinecraftEducation_LinuxDS*/
+MinecraftEducation_Server_Linux*/
+*.zip
+*.md
+*.ipynb
+**/.ipynb_checkpoints/
