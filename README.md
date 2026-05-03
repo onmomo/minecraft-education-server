@@ -293,6 +293,22 @@ inside `edu_server_session.json` if you lose track of it elsewhere:
 jq -r '.serverId // .server_id // .' data/edu_server_session.json | head
 ```
 
+## Build provenance from inside the container
+
+Three build-time facts are baked into the running image so you can
+check them from any shell, including `docker exec`:
+
+```bash
+docker exec minecraft-edu sh -c \
+  'echo "BUNDLE_URL=$BUNDLE_URL"
+   echo "BUNDLE_SHA256=$BUNDLE_SHA256"
+   echo "MEE_VERSION=$(cat /opt/mcedu/.mee_version)"'
+```
+
+`BUNDLE_URL` and `BUNDLE_SHA256` are real env vars; the parsed MEE
+version is in `/opt/mcedu/.mee_version`. (The same MEE version is also
+in the bedrock server's startup logs.)
+
 ## Server console
 
 Server commands (`say hello`, `op <player>`, `stop`, …) are read from

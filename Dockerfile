@@ -62,7 +62,12 @@ RUN --mount=type=secret,id=bundle_auth \
         ls -la /opt/mcedu >&2; \
         exit 1; \
     }; \
-    chmod 0755 /opt/mcedu/bedrock_server_edu
+    chmod 0755 /opt/mcedu/bedrock_server_edu; \
+    # Persist the parsed MEE version (extracted from the resolved
+    # filename) so it's available at runtime. Empty if unparseable.
+    basename "$BUNDLE_URL" \
+        | sed -nE 's/^MinecraftEducation_LinuxDS_([0-9.]+)\.zip$/\1/p' \
+        > /opt/mcedu/.mee_version
 
 # ----------------------------------------------------------------------
 # Stage 2 — runtime image
@@ -86,6 +91,17 @@ RUN groupadd -g 1000 mcedu && \
 
 COPY --from=fetcher --chown=mcedu:mcedu /opt/mcedu/ /opt/mcedu/
 COPY --chown=root:root --chmod=0755 docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+# Re-declare the build args in this stage so we can persist them as
+# runtime ENV (they're inherited via build-arg propagation; the
+# defaults here are only used if a caller doesn't pass them).
+ARG BUNDLE_URL=https://aka.ms/downloadmee-linuxserver
+ARG BUNDLE_SHA256=
+
+# Build provenance — visible inside the container via `env`, `printenv`,
+# or `echo $BUNDLE_URL` from any shell, including `docker exec`.
+ENV BUNDLE_URL=${BUNDLE_URL} \
+    BUNDLE_SHA256=${BUNDLE_SHA256}
 
 USER mcedu
 WORKDIR /data
